@@ -1,6 +1,8 @@
 package huh
 
-import "fmt"
+import (
+	"fmt"
+)
 
 // Option is an option for select fields.
 type Option[T comparable] struct {
@@ -21,18 +23,18 @@ func NewOptions[T comparable](values ...T) []Option[T] {
 	return options
 }
 
-// NewOption returns a new select option.
-func NewOption[T comparable](key string, value T) Option[T] {
-	return Option[T]{Key: key, Value: value}
-}
-
 // Selected sets whether the option is currently selected.
 func (o Option[T]) Selected(selected bool) Option[T] {
 	o.selected = selected
 	return o
 }
 
-// String returns the key of the option.
+// String returns the string representation of the Option.
 func (o Option[T]) String() string {
 	return o.Key
+}
+
+// NewOption returns a new select option.
+func NewOption[T comparable](key string, value T) Option[T] {
+	return Option[T]{Key: key, Value: value}
 }

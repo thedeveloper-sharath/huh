@@ -1,7 +1,9 @@
 package huh
 
 import (
+	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -13,6 +15,17 @@ import (
 	"github.com/charmbracelet/huh/accessibility"
 	"github.com/charmbracelet/lipgloss"
 )
+
+const (
+	top int = iota
+	bottom
+	up
+	down
+	halfUp
+	halfDown
+)
+
+const defaultLimit = 2
 
 // MultiSelect is a form multi-select field.
 type MultiSelect[T comparable] struct {
@@ -40,6 +53,8 @@ type MultiSelect[T comparable] struct {
 	filter    textinput.Model
 	viewport  viewport.Model
 	spinner   spinner.Model
+	// avoid iterating over options to figure out what is selected.
+	selected map[int]Option[T]
 
 	// options
 	width      int
@@ -65,6 +80,8 @@ func NewMultiSelect[T comparable]() *MultiSelect[T] {
 		title:       Eval[string]{cache: make(map[uint64]string)},
 		description: Eval[string]{cache: make(map[uint64]string)},
 		spinner:     s,
+		selected:    make(map[int]Option[T]),
+		limit:       defaultLimit,
 	}
 }
 
@@ -76,14 +93,7 @@ func (m *MultiSelect[T]) Value(value *[]T) *MultiSelect[T] {
 // Accessor sets the accessor of the input field.
 func (m *MultiSelect[T]) Accessor(accessor Accessor[[]T]) *MultiSelect[T] {
 	m.accessor = accessor
-	for i, o := range m.options.val {
-		for _, v := range m.accessor.Get() {
-			if o.Value == v {
-				m.options.val[i].selected = true
-				break
-			}
-		}
-	}
+	m.initSelectedValues(m.options.val...)
 	return m
 }
 
@@ -126,17 +136,10 @@ func (m *MultiSelect[T]) Options(options ...Option[T]) *MultiSelect[T] {
 	if len(options) <= 0 {
 		return m
 	}
-
-	for i, o := range options {
-		for _, v := range m.accessor.Get() {
-			if o.Value == v {
-				options[i].selected = true
-				break
-			}
-		}
-	}
+	m.initSelectedValues(options...)
 	m.options.val = options
 	m.filteredOptions = options
+	m.cursor = m.lowestSelectedIndex()
 	m.updateViewportHeight()
 	return m
 }
@@ -152,6 +155,7 @@ func (m *MultiSelect[T]) OptionsFunc(f func() []Option[T], bindings any) *MultiS
 		m.height = defaultHeight
 		m.updateViewportHeight()
 	}
+	m.cursor = m.lowestSelectedIndex()
 	return m
 }
 
@@ -338,49 +342,29 @@ func (m *MultiSelect[T]) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.filtering && msg.String() == "k" {
 				break
 			}
-
-			m.cursor = max(m.cursor-1, 0)
-			if m.cursor < m.viewport.YOffset {
-				m.viewport.SetYOffset(m.cursor)
-			}
+			m.moveCursor(up)
 		case key.Matches(msg, m.keymap.Down):
 			if m.filtering && msg.String() == "j" {
 				break
 			}
-
-			m.cursor = min(m.cursor+1, len(m.filteredOptions)-1)
-			if m.cursor >= m.viewport.YOffset+m.viewport.Height {
-				m.viewport.LineDown(1)
-			}
+			m.moveCursor(down)
 		case key.Matches(msg, m.keymap.GotoTop):
 			if m.filtering {
 				break
 			}
-			m.cursor = 0
-			m.viewport.GotoTop()
+			m.moveCursor(top)
 		case key.Matches(msg, m.keymap.GotoBottom):
 			if m.filtering {
 				break
 			}
-			m.cursor = len(m.filteredOptions) - 1
-			m.viewport.GotoBottom()
+			m.moveCursor(bottom)
 		case key.Matches(msg, m.keymap.HalfPageUp):
-			m.cursor = max(m.cursor-m.viewport.Height/2, 0)
-			m.viewport.HalfViewUp()
+			m.moveCursor(halfUp)
 		case key.Matches(msg, m.keymap.HalfPageDown):
-			m.cursor = min(m.cursor+m.viewport.Height/2, len(m.filteredOptions)-1)
-			m.viewport.HalfViewDown()
+			m.moveCursor(halfDown)
 		case key.Matches(msg, m.keymap.Toggle) && !m.filtering:
-			for i, option := range m.options.val {
-				if option.Key == m.filteredOptions[m.cursor].Key {
-					if !m.options.val[m.cursor].selected && m.limit > 0 && m.numSelected() >= m.limit {
-						break
-					}
-					selected := m.options.val[i].selected
-					m.options.val[i].selected = !selected
-					m.filteredOptions[m.cursor].selected = !selected
-				}
-			}
+			opt := m.options.val[m.cursor]
+			m.ToggleSelect(m.cursor, opt)
 			m.updateValue()
 		case key.Matches(msg, m.keymap.ToggleAll) && m.limit == 0:
 			selected := false
@@ -423,14 +407,13 @@ func (m *MultiSelect[T]) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.filter.Value() != "" {
 				m.filteredOptions = nil
 				for _, option := range m.options.val {
-					if m.filterFunc(option.Key) {
+					if m.filterFunc(option.String()) {
 						m.filteredOptions = append(m.filteredOptions, option)
 					}
 				}
 			}
 			if len(m.filteredOptions) > 0 {
 				m.cursor = min(m.cursor, len(m.filteredOptions)-1)
-				m.viewport.SetYOffset(clamp(m.cursor, 0, len(m.filteredOptions)-m.viewport.Height))
 			}
 		}
 	}
@@ -454,21 +437,13 @@ func (m *MultiSelect[T]) updateViewportHeight() {
 }
 
 func (m *MultiSelect[T]) numSelected() int {
-	var count int
-	for _, o := range m.options.val {
-		if o.selected {
-			count++
-		}
-	}
-	return count
+	return len(m.selected)
 }
 
 func (m *MultiSelect[T]) updateValue() {
 	value := make([]T, 0)
-	for _, option := range m.options.val {
-		if option.selected {
-			value = append(value, option.Value)
-		}
+	for i := range m.selected {
+		value = append(value, m.selected[i].Value)
 	}
 	m.accessor.Set(value)
 	m.err = m.validate(m.accessor.Get())
@@ -530,12 +505,12 @@ func (m *MultiSelect[T]) optionsView() string {
 			sb.WriteString(strings.Repeat(" ", lipgloss.Width(c)))
 		}
 
-		if m.filteredOptions[i].selected {
+		if _, ok := m.selected[i]; ok {
 			sb.WriteString(styles.SelectedPrefix.String())
-			sb.WriteString(styles.SelectedOption.Render(option.Key))
+			sb.WriteString(styles.SelectedOption.Render(option.String()))
 		} else {
 			sb.WriteString(styles.UnselectedPrefix.String())
-			sb.WriteString(styles.UnselectedOption.Render(option.Key))
+			sb.WriteString(styles.UnselectedOption.Render(option.String()))
 		}
 		if i < len(m.options.val)-1 {
 			sb.WriteString("\n")
@@ -549,11 +524,30 @@ func (m *MultiSelect[T]) optionsView() string {
 	return sb.String()
 }
 
+func (m *MultiSelect[T]) lowestSelectedIndex() int {
+	if len(m.selected) == 0 {
+		return 0
+	}
+	var indices []int
+	for k := range m.selected {
+		indices = append(indices, k)
+	}
+	return slices.Min(indices)
+}
+
+// startAtSelected makes the viewport content start at the selected element. Returns the index.
+func (m *MultiSelect[T]) startAtSelected() int {
+	if m.cursor > m.viewport.YOffset+m.viewport.Height {
+		m.viewport.SetYOffset(m.cursor - m.viewport.YOffset)
+	}
+	return m.cursor
+}
+
 // View renders the multi-select field.
 func (m *MultiSelect[T]) View() string {
 	styles := m.activeStyles()
-
 	m.viewport.SetContent(m.optionsView())
+	m.startAtSelected()
 
 	var sb strings.Builder
 	if m.title.val != "" || m.title.fn != nil {
@@ -574,10 +568,10 @@ func (m *MultiSelect[T]) printOptions() {
 	sb.WriteString("\n")
 
 	for i, option := range m.options.val {
-		if option.selected {
-			sb.WriteString(styles.SelectedOption.Render(fmt.Sprintf("%d. %s %s", i+1, "✓", option.Key)))
+		if _, ok := m.selected[i]; ok {
+			sb.WriteString(styles.SelectedOption.Render(fmt.Sprintf("%d. %s %s", i+1, "✓", option.String())))
 		} else {
-			sb.WriteString(fmt.Sprintf("%d. %s %s", i+1, " ", option.Key))
+			sb.WriteString(fmt.Sprintf("%d. %s %s", i+1, " ", option.String()))
 		}
 		sb.WriteString("\n")
 	}
@@ -630,27 +624,32 @@ func (m *MultiSelect[T]) runAccessible() error {
 			break
 		}
 
-		if !m.options.val[choice-1].selected && m.limit > 0 && m.numSelected() >= m.limit {
+		// Toggle Selection
+		err := m.ToggleSelect(choice-1, m.options.val[choice-1])
+		if err != nil {
 			fmt.Printf("You can't select more than %d options.\n", m.limit)
 			continue
 		}
-		m.options.val[choice-1].selected = !m.options.val[choice-1].selected
-		if m.options.val[choice-1].selected {
-			fmt.Printf("Selected: %s\n\n", m.options.val[choice-1].Key)
-		} else {
-			fmt.Printf("Deselected: %s\n\n", m.options.val[choice-1].Key)
-		}
 
+		// Provide confirmation message.
+		if o, ok := m.selected[choice-1]; ok {
+			// If it exists, it didn't before.
+			fmt.Printf("Selected: %s\n\n", o.String())
+		} else {
+			fmt.Printf("Deselected: %s\n\n", o.String())
+		}
 		m.printOptions()
 	}
 
 	var values []string
 
+	// TODO centralize this kind of loop
 	value := m.accessor.Get()
-	for _, option := range m.options.val {
-		if option.selected {
+	for i, option := range m.options.val {
+		if _, ok := m.selected[i]; ok {
 			value = append(value, option.Value)
-			values = append(values, option.Key)
+			values = append(values, option.String())
+			m.selected[i] = option
 		}
 	}
 	m.accessor.Set(value)
@@ -718,4 +717,65 @@ func (m *MultiSelect[T]) GetKey() string {
 // GetValue returns the multi-select's value.
 func (m *MultiSelect[T]) GetValue() any {
 	return m.accessor.Get()
+}
+
+// ToggleSelect selects or deselects the option. Returns an error if the number
+// of selected values exceeds the limit.
+func (m *MultiSelect[T]) ToggleSelect(index int, o Option[T]) error {
+	if _, ok := m.selected[index]; ok {
+		delete(m.selected, index)
+		return nil
+	}
+	if len(m.selected) >= m.limit {
+		return errors.New("Limit reached. Unable to select another option.")
+	}
+	m.selected[index] = o
+	return nil
+}
+
+// isSelected returns true if the value at the given index is selected.
+func (m *MultiSelect[T]) isSelected(index int) bool {
+	if _, ok := m.selected[index]; ok {
+		return true
+	}
+	return false
+}
+
+// moveCursor repositions both the cursor and viewport offset while keeping
+// values within bounds.
+func (m *MultiSelect[T]) moveCursor(i int) {
+	switch i {
+	case top:
+		m.cursor = top
+		m.viewport.GotoTop()
+	case up:
+		m.cursor = max(m.cursor-1, 0)
+		if m.cursor < m.viewport.YOffset {
+			m.viewport.SetYOffset(m.cursor)
+		}
+	case down:
+		m.cursor = min(m.cursor+1, len(m.filteredOptions)-1)
+		if m.cursor >= m.viewport.YOffset+m.viewport.Height {
+			m.viewport.LineDown(1)
+		}
+	case bottom:
+		m.cursor = len(m.filteredOptions) - 1
+		m.viewport.GotoBottom()
+	case halfUp:
+		m.cursor = max(m.cursor-m.viewport.Height/2, 0)
+		m.viewport.HalfViewUp()
+	case halfDown:
+		m.cursor = min(m.cursor+m.viewport.Height/2, len(m.filteredOptions)-1)
+		m.viewport.HalfViewDown()
+	}
+}
+
+// initSelectedValues handles the Option's selected value that's set on
+// instantiation and adds it to our map of selected items.
+func (m *MultiSelect[T]) initSelectedValues(opts ...Option[T]) {
+	for i, o := range opts {
+		if o.selected {
+			m.selected[i] = o
+		}
+	}
 }
