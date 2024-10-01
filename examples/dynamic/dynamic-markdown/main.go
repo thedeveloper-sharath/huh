@@ -4,7 +4,7 @@ import (
 	"log"
 
 	"github.com/charmbracelet/glamour"
-	"github.com/charmbracelet/huh"
+	"github.com/thedeveloper-sharath/huh"
 )
 
 func main() {

@@ -5,8 +5,8 @@ import (
 	"log"
 	"os"
 
-	"github.com/charmbracelet/huh"
-	"github.com/charmbracelet/huh/spinner"
+	"github.com/thedeveloper-sharath/huh"
+	"github.com/thedeveloper-sharath/huh/spinner"
 	"github.com/charmbracelet/lipgloss"
 )
 
@@ -25,7 +25,7 @@ func main() {
 	var action Action
 	spinnerStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("4"))
 
-	repo := "charmbracelet/huh"
+	repo := "thedeveloper-sharath/huh"
 	theme := huh.ThemeBase16()
 	theme.FieldSeparator = lipgloss.NewStyle().SetString("\n")
 	theme.Help.FullKey.MarginTop(1)
@@ -51,10 +51,10 @@ func main() {
 
 	switch action {
 	case Push:
-		_ = spinner.New().Title("Pushing to charmbracelet/huh").Style(spinnerStyle).Run()
-		fmt.Println("Pushed to charmbracelet/huh")
+		_ = spinner.New().Title("Pushing to thedeveloper-sharath/huh").Style(spinnerStyle).Run()
+		fmt.Println("Pushed to thedeveloper-sharath/huh")
 	case Fork:
-		fmt.Println("Creating a fork of charmbracelet/huh...")
+		fmt.Println("Creating a fork of thedeveloper-sharath/huh...")
 	case Skip:
 		fmt.Println("Skipping pushing the branch...")
 	case Cancel:

@@ -3,9 +3,9 @@
 <p>
   <img alt="Hey there! I’m Glenn!" title="Hey there! I’m Glenn!" src="https://stuff.charm.sh/huh/glenn.png" width="400" />
   <br><br>
-  <a href="https://github.com/charmbracelet/huh/releases"><img src="https://img.shields.io/github/release/charmbracelet/huh.svg" alt="Latest Release"></a>
-  <a href="https://pkg.go.dev/github.com/charmbracelet/huh?tab=doc"><img src="https://godoc.org/github.com/golang/gddo?status.svg" alt="Go Docs"></a>
-  <a href="https://github.com/charmbracelet/huh/actions"><img src="https://github.com/charmbracelet/huh/actions/workflows/build.yml/badge.svg?branch=main" alt="Build Status"></a>
+  <a href="https://github.com/thedeveloper-sharath/huh/releases"><img src="https://img.shields.io/github/release/thedeveloper-sharath/huh.svg" alt="Latest Release"></a>
+  <a href="https://pkg.go.dev/github.com/thedeveloper-sharath/huh?tab=doc"><img src="https://godoc.org/github.com/golang/gddo?status.svg" alt="Go Docs"></a>
+  <a href="https://github.com/thedeveloper-sharath/huh/actions"><img src="https://github.com/thedeveloper-sharath/huh/actions/workflows/build.yml/badge.svg?branch=main" alt="Build Status"></a>
 </p>
 
 A simple, powerful library for building interactive forms and prompts in the terminal.
@@ -26,7 +26,7 @@ define a few variables where’ll we store answers.
 ```go
 package main
 
-import "github.com/charmbracelet/huh"
+import "github.com/thedeveloper-sharath/huh"
 
 var (
     burger       string
@@ -129,7 +129,7 @@ If you need more dynamic forms that change based on input from previous fields,
 check out the [dynamic forms](#dynamic-forms) example.
 
 [burgersource]: ./examples/burger/main.go
-[docs]: https://pkg.go.dev/github.com/charmbracelet/huh?tab=doc
+[docs]: https://pkg.go.dev/github.com/thedeveloper-sharath/huh?tab=doc
 
 ## Field Reference
 
@@ -276,7 +276,7 @@ choose from one of the five predefined themes:
 
 Themes can take advantage of the full range of
 [Lip Gloss][lipgloss] style options. For a high level theme reference see
-[the docs](https://pkg.go.dev/github.com/charmbracelet/huh#Theme).
+[the docs](https://pkg.go.dev/github.com/thedeveloper-sharath/huh#Theme).
 
 [lipgloss]: https://github.com/charmbracelet/lipgloss
 
@@ -397,7 +397,7 @@ fmt.Println("Order up!")
 </table>
 
 For more on Spinners see the [spinner examples](./spinner/examples) and
-[the spinner docs](https://pkg.go.dev/github.com/charmbracelet/huh/spinner).
+[the spinner docs](https://pkg.go.dev/github.com/thedeveloper-sharath/huh/spinner).
 
 ## What about Bubble Tea?
 
@@ -467,7 +467,7 @@ Tea example][example].
 
 [tea]: https://github.com/charmbracelet/bubbletea
 [bubbles]: https://github.com/charmbracelet/bubbles
-[example]: https://github.com/charmbracelet/huh/blob/main/examples/bubbletea/main.go
+[example]: https://github.com/thedeveloper-sharath/huh/blob/main/examples/bubbletea/main.go
 
 ## `Huh?` in the Wild
 For some `Huh?` programs in production, see:

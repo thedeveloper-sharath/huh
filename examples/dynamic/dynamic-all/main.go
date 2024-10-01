@@ -4,7 +4,7 @@ import (
 	"log"
 	"strconv"
 
-	"github.com/charmbracelet/huh"
+	"github.com/thedeveloper-sharath/huh"
 )
 
 func main() {

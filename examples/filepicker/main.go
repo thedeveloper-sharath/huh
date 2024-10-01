@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/charmbracelet/huh"
+	"github.com/thedeveloper-sharath/huh"
 )
 
 func main() {

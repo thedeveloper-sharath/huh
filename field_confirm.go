@@ -6,7 +6,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/huh/accessibility"
+	"github.com/thedeveloper-sharath/huh/accessibility"
 	"github.com/charmbracelet/lipgloss"
 )
 

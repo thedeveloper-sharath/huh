@@ -1,6 +1,6 @@
 package main
 
-import "github.com/charmbracelet/huh"
+import "github.com/thedeveloper-sharath/huh"
 
 func main() {
 	var country string

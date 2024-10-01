@@ -7,7 +7,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/progress"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/huh"
+	"github.com/thedeveloper-sharath/huh"
 	"github.com/charmbracelet/lipgloss"
 )
 

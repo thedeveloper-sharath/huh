@@ -12,7 +12,7 @@ import (
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/huh/internal/selector"
+	"github.com/thedeveloper-sharath/huh/internal/selector"
 )
 
 const defaultWidth = 80
