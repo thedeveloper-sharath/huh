@@ -1,4 +1,4 @@
-module github.com/charmbracelet/huh
+module github.com/thedeveloper-sharath/huh
 
 go 1.21
 
